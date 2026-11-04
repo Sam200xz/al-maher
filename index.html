@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>منصة الماهر القرآني | منظومة الإتقان الشاملة</title>
+  <title>منصة الماهر القرآني | منظومة الإتقان والتسجيل</title>
 
   <!-- الخطوط -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,18 +78,43 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
-    // الاتصال بـ Supabase
+    // بيانات الاتصال بـ Supabase
     const SUPABASE_URL = "https://qjkjvhpnayznstqpnnrc.supabase.co";
     const SUPABASE_KEY = "sb_publishable_x15hRaDARRfm6FRWLkk-hw_jpRWKdwo";
     const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-    // بيانات الطلاب الأولية المدمجة
+    // حسابات النظام
+    const SYSTEM_ACCOUNTS = [
+      { role: 'super_admin', label: 'المشرف العام', name: 'الشيخ سمير دجاجة', email: 'admin@almaher.org', icon: '👑' },
+      { role: 'teacher', label: 'المعلم (المربي)', name: 'الأستاذ عبد الرحمن', email: 'teacher@almaher.org', icon: '📖' },
+      { role: 'examiner', label: 'الممتحن المعتمد', name: 'الشيخ القارئ', email: 'examiner@almaher.org', icon: '📝' },
+      { role: 'parent', label: 'ولي الأمر', name: 'ولي الأمر (سمير)', email: 'parent@almaher.org', icon: '👨‍👩‍👦' },
+      { role: 'student', label: 'التلميذ (حسين)', name: 'حسين دجاجة', email: 'student@almaher.org', icon: '🌟' }
+    ];
+
+    // قائمة الطلاب الأولية
     const INITIAL_STUDENTS = [
       { id: "std-1", name: "حسين دجاجة", groupType: "type2", surah: "سورة البقرة", ayah: 185, progressPages: "+4", attendanceRate: 98, lastExamScore: 97, isLeader: true, parent: "سمير دجاجة", streak: 12 },
       { id: "std-2", name: "خديجة دجاجة", groupType: "type1", surah: "سورة آل عمران", ayah: 92, progressPages: "0", attendanceRate: 95, lastExamScore: 92, isLeader: false, parent: "سمير دجاجة", streak: 9 },
       { id: "std-3", name: "أمينة دجاجة", groupType: "type1", surah: "سورة آل عمران", ayah: 88, progressPages: "-2", attendanceRate: 90, lastExamScore: 89, isLeader: false, parent: "سمير دجاجة", streak: 6 },
       { id: "std-4", name: "بلال القحطاني", groupType: "type2", surah: "سورة النساء", ayah: 40, progressPages: "+1", attendanceRate: 92, lastExamScore: 88, isLeader: false, parent: "سعد القحطاني", streak: 8 },
       { id: "std-5", name: "زياد منصور", groupType: "type3", surah: "سورة مريم", ayah: 55, progressPages: "حر", attendanceRate: 85, lastExamScore: 82, isLeader: false, parent: "فاروق منصور", streak: 4 }
+    ];
+
+    // نموذج طلب انضمام مبدئي قيد المراجعة
+    const INITIAL_REQUESTS = [
+      {
+        id: "req-1",
+        studentName: "يوسف بلقاسم",
+        age: 11,
+        memorizedParts: "3 أحزاب",
+        lastSurah: "سورة النبأ",
+        groupPreference: "type1",
+        timePreference: "بعد العصر",
+        parentName: "طارق بلقاسم",
+        phone: "+1 581 000 1234",
+        date: "اليوم"
+      }
     ];
 
     const SURAH_EXAM_SAMPLE = [
@@ -101,13 +126,25 @@
     ];
 
     function App() {
-      // الدور المختار حالياً (يمكن تغييره بلمسة واحدة من الشريط العلوي)
-      const [currentRole, setCurrentRole] = useState('super_admin');
-      
-      // قاعدة البيانات المحلية في المتصفح + المزامنة
+      // المستخدم الحالي (null = الشاشة العامة للتسجيل والدخول)
+      const [currentUser, setCurrentUser] = useState(() => {
+        const saved = localStorage.getItem('almaher_active_user');
+        return saved ? JSON.parse(saved) : SYSTEM_ACCOUNTS[0]; // افتراضياً يبدأ بالمشرف
+      });
+
+      // تبويب الشاشة العامة: 'login' أو 'register'
+      const [authTab, setAuthTab] = useState('login');
+
+      // قائمة الطلاب المعتمدين
       const [students, setStudents] = useState(() => {
         const saved = localStorage.getItem('almaher_v2_students');
         return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+      });
+
+      // طلبات الانضمام المعلقة
+      const [pendingRequests, setPendingRequests] = useState(() => {
+        const saved = localStorage.getItem('almaher_pending_reqs');
+        return saved ? JSON.parse(saved) : INITIAL_REQUESTS;
       });
 
       const [attendance, setAttendance] = useState({
@@ -117,23 +154,58 @@
       const [toasts, setToasts] = useState([]);
       const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-      // حفظ أي تغيير محلياً تلقائياً
+      // حفظ التغييرات محلياً
       useEffect(() => {
         localStorage.setItem('almaher_v2_students', JSON.stringify(students));
       }, [students]);
 
+      useEffect(() => {
+        localStorage.setItem('almaher_pending_reqs', JSON.stringify(pendingRequests));
+      }, [pendingRequests]);
+
+      useEffect(() => {
+        if (currentUser) {
+          localStorage.setItem('almaher_active_user', JSON.stringify(currentUser));
+        } else {
+          localStorage.removeItem('almaher_active_user');
+        }
+      }, [currentUser]);
+
       const showToast = (msg, type = 'emerald') => {
         const id = Date.now();
         setToasts(prev => [...prev, { id, msg, type }]);
-        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
       };
 
-      // إضافة طالب جديد بنقرة زر بدون أي كود
-      const handleAddStudent = (newStd) => {
-        const updated = [newStd, ...students];
-        setStudents(updated);
-        setIsAddModalOpen(false);
-        showToast(`تمت إضافة الطالب (${newStd.name}) بنجاح وحفظه في السحاب!`, 'emerald');
+      // تقديم طلب انضمام جديد من ولي الأمر
+      const handleRegisterSubmit = (newReq) => {
+        setPendingRequests(prev => [newReq, ...prev]);
+        showToast("تم إرسال طلب الانضمام بنجاح! طلبكم قيد المراجعة لدى المشرف.", "emerald");
+        setAuthTab('login');
+      };
+
+      // قبول طلب الطالب وتسكينه في الحلقة
+      const handleApproveRequest = (req) => {
+        const newStd = {
+          id: "std-" + Date.now(),
+          name: req.studentName,
+          surah: req.lastSurah || "سورة البقرة",
+          groupType: req.groupPreference || "type1",
+          progressPages: "0",
+          attendanceRate: 100,
+          lastExamScore: 100,
+          parent: req.parentName,
+          streak: 1
+        };
+        setStudents(prev => [newStd, ...prev]);
+        setPendingRequests(prev => prev.filter(r => r.id !== req.id));
+        showToast(`تم قبول الطالب (${req.studentName}) وتسكينه بالحلقة بنجاح!`);
+      };
+
+      // رفض أو أرشفة طلب
+      const handleRejectRequest = (reqId) => {
+        setPendingRequests(prev => prev.filter(r => r.id !== reqId));
+        showToast("تم نقل الطلب للأرشيف.");
       };
 
       return (
@@ -148,211 +220,436 @@
             ))}
           </div>
 
-          {/* الشريط العلوي العام مع مبدّل الأدوار */}
-          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-borderCustom px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-deep to-emerald-muted text-gold-accent flex items-center justify-center font-black text-lg shadow border border-gold-accent/30">
-                م
-              </div>
-              <div>
-                <h1 className="text-xs font-black text-emerald-deep">منصة الماهر</h1>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[10px] text-emerald-700 font-bold">متصل بالسحاب</span>
-                </div>
-              </div>
-            </div>
-
-            {/* محوّل الأدوار بلمسة واحدة */}
-            <select
-              value={currentRole}
-              onChange={(e) => {
-                setCurrentRole(e.target.value);
-                showToast(`تم التبديل إلى واجهة: ${e.target.options[e.target.selectedIndex].text}`);
-              }}
-              className="text-xs bg-emerald-light text-emerald-deep font-bold border border-emerald-deep/20 rounded-xl px-2.5 py-1.5 focus:outline-none"
-            >
-              <option value="super_admin">👑 المشرف العام</option>
-              <option value="teacher">📖 المعلم (المربي)</option>
-              <option value="examiner">📝 الممتحن المعتمد</option>
-              <option value="parent">👨‍👩‍👦 ولي الأمر</option>
-              <option value="student">🌟 التلميذ (حسين)</option>
-            </select>
-          </header>
-
-          {/* محتوى الشاشة حسب الدور المختار */}
-          <main className="flex-1 p-4 safe-bottom overflow-y-auto space-y-4">
-            
-            {/* 1. واجهة المشرف العام */}
-            {currentRole === 'super_admin' && (
-              <div className="space-y-4">
-                <div className="bg-gradient-to-l from-emerald-deep to-emerald-muted text-white rounded-3xl p-5 shadow-apple border border-gold-accent/40 flex justify-between items-center">
-                  <div>
-                    <span className="text-gold-light text-xs font-semibold">لوحة الإشراف العام</span>
-                    <h2 className="text-lg font-black mt-1">الشيخ سمير دجاجة</h2>
-                    <p className="text-xs text-white/80">إجمالي الطلبة: {students.length} طلاب</p>
+          {/* ======================================================== */}
+          {/* الشاشة العامة (عند عدم تسجيل الدخول: دخول / طلب انضمام) */}
+          {/* ======================================================== */}
+          {!currentUser ? (
+            <div className="p-5 flex-1 flex flex-col justify-between">
+              <div className="space-y-5 pt-3">
+                
+                {/* الشعار */}
+                <div className="text-center space-y-1.5">
+                  <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-br from-emerald-deep to-emerald-muted flex items-center justify-center text-gold-accent font-black text-2xl shadow-apple border border-gold-accent/40">
+                    م
                   </div>
-                  <button 
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="bg-gold-accent text-emerald-deep font-black text-xs px-3 py-2.5 rounded-2xl shadow active:scale-95 transition"
+                  <h1 className="text-xl font-black text-emerald-deep">منصة الماهر القرآني</h1>
+                  <p className="text-xs text-dark-muted">حلقة الإتقان والتحفيظ المنهجي</p>
+                </div>
+
+                {/* التبديل بين الدخول وطلب الانضمام */}
+                <div className="flex bg-card p-1 rounded-2xl border border-borderCustom shadow-sm">
+                  <button
+                    onClick={() => setAuthTab('login')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${
+                      authTab === 'login' ? 'bg-emerald-deep text-white shadow' : 'text-dark-muted'
+                    }`}
                   >
-                    + طالب جديد
+                    تسجيل الدخول
+                  </button>
+                  <button
+                    onClick={() => setAuthTab('register')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${
+                      authTab === 'register' ? 'bg-emerald-deep text-white shadow' : 'text-dark-muted'
+                    }`}
+                  >
+                    طلب انضمام جديد ✨
                   </button>
                 </div>
 
-                <div className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-3">
-                  <h3 className="text-xs font-bold text-emerald-deep">إدارة الطلاب والمسارات الحالية:</h3>
-                  <div className="space-y-2">
-                    {students.map(s => (
-                      <div key={s.id} className="p-3 bg-ivory rounded-2xl border border-borderCustom flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-emerald-deep">{s.name}</span>
-                            {s.isLeader && <span className="text-[10px] bg-gold-soft text-gold-accent px-1.5 py-0.5 rounded-md font-bold">نقيب</span>}
-                          </div>
-                          <span className="text-[10px] text-dark-muted">{s.surah} • ولي الأمر: {s.parent}</span>
+                {/* تبويب 1: تسجيل الدخول العادي والسريع */}
+                {authTab === 'login' && (
+                  <div className="space-y-4">
+                    <div className="bg-card p-5 rounded-3xl border border-borderCustom shadow-apple space-y-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">البريد الإلكتروني</label>
+                        <input type="email" placeholder="name@almaher.org" className="w-full text-xs p-3 rounded-2xl bg-ivory border border-borderCustom focus:outline-none" dir="ltr" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">كلمة المرور</label>
+                        <input type="password" placeholder="••••••••" className="w-full text-xs p-3 rounded-2xl bg-ivory border border-borderCustom focus:outline-none" dir="ltr" />
+                      </div>
+                      <button 
+                        onClick={() => setCurrentUser(SYSTEM_ACCOUNTS[0])}
+                        className="w-full bg-emerald-deep text-white font-bold py-3.5 rounded-2xl text-xs shadow active:scale-95 transition"
+                      >
+                        دخول إلى المنصة
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-[10px] text-dark-muted font-bold block text-center">أو دخول سريع لحسابات الأدوار:</span>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {SYSTEM_ACCOUNTS.map(acc => (
+                          <button
+                            key={acc.role}
+                            onClick={() => {
+                              setCurrentUser(acc);
+                              showToast(`مرحباً بك: ${acc.name}`);
+                            }}
+                            className="p-2.5 rounded-2xl bg-card border border-borderCustom flex items-center justify-between shadow-sm active:scale-98 transition"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{acc.icon}</span>
+                              <span className="text-xs font-bold text-emerald-deep">{acc.label} ({acc.name})</span>
+                            </div>
+                            <span className="text-[11px] text-gold-accent font-bold">فتح ‹</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* تبويب 2: استمارة طلب الانضمام الجديد */}
+                {authTab === 'register' && (
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const f = e.target;
+                    handleRegisterSubmit({
+                      id: "req-" + Date.now(),
+                      studentName: f.stdName.value,
+                      age: f.stdAge.value,
+                      memorizedParts: f.stdParts.value || "مبتدئ",
+                      lastSurah: f.stdSurah.value || "الفاتحة",
+                      groupPreference: f.stdGroup.value,
+                      timePreference: f.stdTime.value,
+                      parentName: f.parentName.value,
+                      phone: f.parentPhone.value,
+                      date: "اليوم"
+                    });
+                  }} className="bg-card p-5 rounded-3xl border border-borderCustom shadow-apple space-y-3">
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2">
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">اسم الطالب كاملاً</label>
+                        <input name="stdName" required placeholder="مثال: يحيى أحمد" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">العمر</label>
+                        <input name="stdAge" type="number" required placeholder="12" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom focus:outline-none text-center" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">مقدار الحفظ السابق</label>
+                        <input name="stdParts" placeholder="مثال: جزآن / 4 أحزاب" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">آخر سورة متقنة</label>
+                        <input name="stdSurah" placeholder="مثال: سورة يس" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom focus:outline-none" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">المسار المرغوب</label>
+                        <select name="stdGroup" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom font-bold text-emerald-deep">
+                          <option value="type1">المسار الموحد</option>
+                          <option value="type2">المسار المتقارب</option>
+                          <option value="type3">المسار الحر (مستقل)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">الفترة المفضلة للحضور</label>
+                        <select name="stdTime" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom font-bold text-emerald-deep">
+                          <option value="بعد صلاة العصر">بعد صلاة العصر</option>
+                          <option value="بعد صلاة المغرب">بعد صلاة المغرب</option>
+                          <option value="فترة مرنة (عطلة الأسبوع)">مرنة (نهاية الأسبوع)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-borderCustom">
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">اسم ولي الأمر</label>
+                        <input name="parentName" required placeholder="اسم الأب أو الأم" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-dark-text block mb-1">الهاتف / تيليجرام</label>
+                        <input name="parentPhone" required placeholder="رقم للتواصل" className="w-full text-xs p-2.5 rounded-xl bg-ivory border border-borderCustom focus:outline-none" dir="ltr" />
+                      </div>
+                    </div>
+
+                    <button type="submit" className="w-full bg-gold-accent text-emerald-deep font-black py-3.5 rounded-2xl text-xs shadow-apple active:scale-95 transition mt-2">
+                      إرسال طلب الانضمام إلى المشرف ✓
+                    </button>
+                  </form>
+                )}
+
+              </div>
+
+              <footer className="text-center pt-4">
+                <span className="text-[10px] text-dark-muted">منصة الماهر القرآني • متصل بالسحاب</span>
+              </footer>
+            </div>
+          ) : (
+
+            // ========================================================
+            // الشاشة الداخلية بعد تسجيل الدخول
+            // ========================================================
+            <>
+              {/* الشريط العلوي مع إمكانية التبديل وزر الخروج */}
+              <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-borderCustom px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-deep to-emerald-muted text-gold-accent flex items-center justify-center font-black text-lg shadow border border-gold-accent/30">
+                    م
+                  </div>
+                  <div>
+                    <h1 className="text-xs font-black text-emerald-deep">{currentUser.name}</h1>
+                    <span className="text-[10px] text-dark-muted">{currentUser.label}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={currentUser.role}
+                    onChange={(e) => {
+                      const targetRole = e.target.value;
+                      const acc = SYSTEM_ACCOUNTS.find(a => a.role === targetRole) || { ...currentUser, role: targetRole };
+                      setCurrentUser(acc);
+                      showToast(`تم التبديل إلى: ${acc.label}`);
+                    }}
+                    className="text-xs bg-emerald-light text-emerald-deep font-bold border border-emerald-deep/20 rounded-xl px-2 py-1.5 focus:outline-none"
+                  >
+                    <option value="super_admin">👑 المشرف</option>
+                    <option value="teacher">📖 المعلم</option>
+                    <option value="examiner">📝 الممتحن</option>
+                    <option value="parent">👨‍👩‍👦 ولي الأمر</option>
+                    <option value="student">🌟 التلميذ</option>
+                  </select>
+
+                  <button
+                    onClick={() => {
+                      setCurrentUser(null);
+                      showToast("تم تسجيل الخروج بنجاح.");
+                    }}
+                    className="p-1.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold active:scale-95"
+                    title="تسجيل الخروج"
+                  >
+                    خروج
+                  </button>
+                </div>
+              </header>
+
+              {/* المحتوى حسب الدور */}
+              <main className="flex-1 p-4 safe-bottom overflow-y-auto space-y-4">
+                
+                {/* 1. المشرف العام (يشمل صندوق طلبات الانضمام المعلقة) */}
+                {currentUser.role === 'super_admin' && (
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-l from-emerald-deep to-emerald-muted text-white rounded-3xl p-5 shadow-apple border border-gold-accent/40 flex justify-between items-center">
+                      <div>
+                        <span className="text-gold-light text-xs font-semibold">لوحة الإشراف العام</span>
+                        <h2 className="text-lg font-black mt-1">الشيخ سمير دجاجة</h2>
+                        <p className="text-xs text-white/80">الطلبة النشطون: {students.length} • الطلبات المعلقة: {pendingRequests.length}</p>
+                      </div>
+                      <button 
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="bg-gold-accent text-emerald-deep font-black text-xs px-3 py-2.5 rounded-2xl shadow active:scale-95 transition"
+                      >
+                        + طالب فوري
+                      </button>
+                    </div>
+
+                    {/* قسم طلبات الانضمام الجديدة قيد المراجعة */}
+                    {pendingRequests.length > 0 && (
+                      <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-4 space-y-2.5 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                            طلبات انضمام جديدة ({pendingRequests.length})
+                          </h3>
+                          <span className="text-[10px] text-amber-800 font-bold">بانتظار موافقتك</span>
                         </div>
-                        <span className="text-xs font-black text-emerald-deep bg-emerald-light px-2.5 py-1 rounded-xl">
-                          {s.progressPages}
-                        </span>
+
+                        <div className="space-y-2">
+                          {pendingRequests.map(req => (
+                            <div key={req.id} className="bg-white p-3 rounded-2xl border border-amber-200/80 shadow-apple space-y-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="text-xs font-bold text-emerald-deep">{req.studentName} ({req.age} سنة)</h4>
+                                  <span className="text-[10px] text-dark-muted block">الحفظ: {req.memorizedParts} • آخر سورة: {req.lastSurah}</span>
+                                  <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+                                    المسار: {req.groupPreference === 'type1' ? 'موحد' : req.groupPreference === 'type2' ? 'متقارب' : 'حر'} • الفترة: {req.timePreference}
+                                  </span>
+                                  <span className="text-[10px] text-dark-muted block">ولي الأمر: {req.parentName} ({req.phone})</span>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-1.5 pt-1 border-t border-borderCustom">
+                                <button
+                                  onClick={() => handleApproveRequest(req)}
+                                  className="flex-1 bg-emerald-deep text-white text-[11px] font-bold py-1.5 rounded-xl shadow active:scale-95"
+                                >
+                                  قبول وتسكين الطالب ✓
+                                </button>
+                                <button
+                                  onClick={() => handleRejectRequest(req.id)}
+                                  className="px-3 bg-red-50 text-red-700 text-[11px] font-bold py-1.5 rounded-xl border border-red-200 active:scale-95"
+                                >
+                                  أرشفة
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* قائمة الطلاب النشطين */}
+                    <div className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-3">
+                      <h3 className="text-xs font-bold text-emerald-deep">قائمة طلاب الحلقة النشطين:</h3>
+                      <div className="space-y-2">
+                        {students.map(s => (
+                          <div key={s.id} className="p-3 bg-ivory rounded-2xl border border-borderCustom flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-emerald-deep">{s.name}</span>
+                                {s.isLeader && <span className="text-[10px] bg-gold-soft text-gold-accent px-1.5 py-0.5 rounded-md font-bold">نقيب</span>}
+                              </div>
+                              <span className="text-[10px] text-dark-muted">{s.surah} • ولي الأمر: {s.parent}</span>
+                            </div>
+                            <span className="text-xs font-black text-emerald-deep bg-emerald-light px-2.5 py-1 rounded-xl">
+                              {s.progressPages}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. المعلم (المربي) */}
+                {currentUser.role === 'teacher' && (
+                  <div className="space-y-4">
+                    <div className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-3">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xs font-bold text-emerald-deep">سجل حضور اليوم (انقر للتغيير):</h3>
+                        <span className="text-[10px] text-dark-muted">مباشر</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {students.map(s => {
+                          const isPresent = attendance[s.id];
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => {
+                                setAttendance(prev => ({ ...prev, [s.id]: !prev[s.id] }));
+                                showToast(`${s.name}: ${!isPresent ? 'حاضر ✓' : 'غائب ✕'}`);
+                              }}
+                              className={`p-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition active:scale-95 ${
+                                isPresent ? 'bg-emerald-light/60 border-emerald-muted/30 text-emerald-deep' : 'bg-red-50 border-red-200 text-red-700'
+                              }`}
+                            >
+                              <span>{s.name}</span>
+                              <span>{isPresent ? '✓' : '✕'}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-2">
+                      <h3 className="text-xs font-bold text-emerald-deep">إعلان تيليجرام للحلقة</h3>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText("🌟 السلام عليكم ورحمة الله\nنرجو من جميع الأبناء إتمام ورد التثبيت وإرسال فيديو القراءة قبل صلاة العصر لضبط الحلقة اليوم.");
+                          showToast("تم نسخ رسالة تيليجرام بنجاح!");
+                        }}
+                        className="w-full bg-emerald-deep text-white text-xs font-bold py-2.5 rounded-xl shadow active:scale-95"
+                      >
+                        نسخ إعلان تيليجرام بنقرة واحدة
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. الممتحن المعتمد */}
+                {currentUser.role === 'examiner' && <ExaminerView students={students} setStudents={setStudents} showToast={showToast} />}
+
+                {/* 4. ولي الأمر */}
+                {currentUser.role === 'parent' && (
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-emerald-deep to-emerald-muted text-white p-4 rounded-3xl shadow">
+                      <span className="text-gold-light text-[11px] font-bold">بوابة المتابعة الأسرية</span>
+                      <h2 className="text-base font-black mt-0.5">أبناء عائلة دجاجة في الحلقة</h2>
+                    </div>
+
+                    {students.filter(s => s.parent === "سمير دجاجة").map(child => (
+                      <div key={child.id} className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-2xl bg-gold-soft text-gold-accent font-black flex items-center justify-center text-sm border border-gold-light/40">
+                              {child.name[0]}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-xs text-emerald-deep">{child.name}</h4>
+                              <span className="text-[10px] text-dark-muted">{child.surah}</span>
+                            </div>
+                          </div>
+                          <span className="text-xs font-black text-emerald-deep bg-emerald-light px-2.5 py-1 rounded-xl">
+                            آخر اختبار: {child.lastExamScore}%
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-center pt-1 border-t border-borderCustom">
+                          <div className="bg-ivory p-2 rounded-xl">
+                            <span className="text-[10px] text-dark-muted block">نسبة الحضور</span>
+                            <span className="text-xs font-black text-emerald-deep">{child.attendanceRate}%</span>
+                          </div>
+                          <div className="bg-ivory p-2 rounded-xl">
+                            <span className="text-[10px] text-dark-muted block">أيام الالتزام المتتالية</span>
+                            <span className="text-xs font-black text-gold-accent">{child.streak} أيام 🔥</span>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* 2. واجهة المعلم */}
-            {currentRole === 'teacher' && (
-              <div className="space-y-4">
-                <div className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold text-emerald-deep">تسجيل حضور حلقة اليوم (انقر للتغيير):</h3>
-                    <span className="text-[10px] text-dark-muted">تاريخ اليوم: مباشر</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {students.map(s => {
-                      const isPresent = attendance[s.id];
-                      return (
-                        <button
-                          key={s.id}
-                          onClick={() => {
-                            setAttendance(prev => ({ ...prev, [s.id]: !prev[s.id] }));
-                            showToast(`${s.name}: ${!isPresent ? 'حاضر ✓' : 'غائب ✕'}`);
-                          }}
-                          className={`p-3 rounded-2xl border font-bold text-xs flex items-center justify-between transition active:scale-95 ${
-                            isPresent ? 'bg-emerald-light/60 border-emerald-muted/30 text-emerald-deep' : 'bg-red-50 border-red-200 text-red-700'
-                          }`}
-                        >
-                          <span>{s.name}</span>
-                          <span>{isPresent ? '✓' : '✕'}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-2">
-                  <h3 className="text-xs font-bold text-emerald-deep">رسالة تيليجرام للحلقة</h3>
-                  <p className="text-[11px] text-dark-muted">رسالة جاهزة للإرسال لأولياء الأمور لتذكيرهم بفيديو التثبيت المنزلي:</p>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText("🌟 السلام عليكم ورحمة الله\nنرجو من جميع الأبناء إتمام ورد التثبيت وإرسال فيديو القراءة قبل صلاة العصر لضبط الحلقة اليوم.");
-                      showToast("تم نسخ نص الرسالة بنجاح!");
-                    }}
-                    className="w-full bg-emerald-deep text-white text-xs font-bold py-2.5 rounded-xl shadow active:scale-95"
-                  >
-                    نسخ إعلان تيليجرام بنقرة واحدة
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 3. واجهة الممتحن المعتمد */}
-            {currentRole === 'examiner' && <ExaminerView students={students} setStudents={setStudents} showToast={showToast} />}
-
-            {/* 4. واجهة ولي الأمر */}
-            {currentRole === 'parent' && (
-              <div className="space-y-3">
-                <div className="bg-gradient-to-r from-emerald-deep to-emerald-muted text-white p-4 rounded-3xl shadow">
-                  <span className="text-gold-light text-[11px] font-bold">بوابة المتابعة الأسرية</span>
-                  <h2 className="text-base font-black mt-0.5">أبناء عائلة دجاجة في الحلقة</h2>
-                </div>
-
-                {students.filter(s => s.parent === "سمير دجاجة").map(child => (
-                  <div key={child.id} className="bg-card p-4 rounded-3xl border border-borderCustom shadow-apple space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-2xl bg-gold-soft text-gold-accent font-black flex items-center justify-center text-sm border border-gold-light/40">
-                          {child.name[0]}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-xs text-emerald-deep">{child.name}</h4>
-                          <span className="text-[10px] text-dark-muted">{child.surah}</span>
-                        </div>
+                {/* 5. التلميذ */}
+                {currentUser.role === 'student' && (
+                  <div className="space-y-4">
+                    <div className="bg-card p-5 rounded-3xl border border-borderCustom shadow-apple text-center space-y-2">
+                      <div className="w-16 h-16 mx-auto rounded-3xl bg-gold-soft flex items-center justify-center text-3xl border border-gold-light/40">
+                        ⭐
                       </div>
-                      <span className="text-xs font-black text-emerald-deep bg-emerald-light px-2.5 py-1 rounded-xl">
-                        آخر اختبار: {child.lastExamScore}%
-                      </span>
-                    </div>
+                      <h3 className="font-black text-base text-emerald-deep">أهلاً بك يا حسين دجاجة</h3>
+                      <p className="text-xs text-dark-muted">ورد اليوم: سورة البقرة (الآيات 185 إلى 200)</p>
+                      
+                      <div className="bg-ivory p-3 rounded-2xl border border-borderCustom my-3">
+                        <span className="text-[11px] text-dark-muted block mb-1">سلسلة الانضباط والتثبيت:</span>
+                        <span className="text-lg font-black text-gold-accent">12 يوماً متتالياً 🔥</span>
+                      </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-center pt-1 border-t border-borderCustom">
-                      <div className="bg-ivory p-2 rounded-xl">
-                        <span className="text-[10px] text-dark-muted block">نسبة الحضور</span>
-                        <span className="text-xs font-black text-emerald-deep">{child.attendanceRate}%</span>
-                      </div>
-                      <div className="bg-ivory p-2 rounded-xl">
-                        <span className="text-[10px] text-dark-muted block">أيام الالتزام المتتالية</span>
-                        <span className="text-xs font-black text-gold-accent">{child.streak} أيام 🔥</span>
-                      </div>
+                      <button
+                        onClick={() => showToast("بارك الله فيك يا بطل! تم تسجيل إنجازك وإشعار والدك والشيخ ✓")}
+                        className="w-full bg-emerald-deep text-white font-bold py-3.5 rounded-2xl text-xs shadow-apple active:scale-95 transition"
+                      >
+                        أنهيت وردي وتثبيتي اليوم ✓
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* 5. واجهة التلميذ (حسين) */}
-            {currentRole === 'student' && (
-              <div className="space-y-4">
-                <div className="bg-card p-5 rounded-3xl border border-borderCustom shadow-apple text-center space-y-2">
-                  <div className="w-16 h-16 mx-auto rounded-3xl bg-gold-soft flex items-center justify-center text-3xl border border-gold-light/40">
-                    ⭐
-                  </div>
-                  <h3 className="font-black text-base text-emerald-deep">أهلاً بك يا حسين دجاجة</h3>
-                  <p className="text-xs text-dark-muted">ورد اليوم: سورة البقرة (الآيات 185 إلى 200)</p>
-                  
-                  <div className="bg-ivory p-3 rounded-2xl border border-borderCustom my-3">
-                    <span className="text-[11px] text-dark-muted block mb-1">سلسلة الانضباط والتثبيت:</span>
-                    <span className="text-lg font-black text-gold-accent">12 يوماً متتالياً 🔥</span>
-                  </div>
+              </main>
+            </>
+          )}
 
-                  <button
-                    onClick={() => {
-                      showToast("بارك الله فيك يا بطل! تم تسجيل إنجازك وإشعار والدك والشيخ ✓");
-                    }}
-                    className="w-full bg-emerald-deep text-white font-bold py-3.5 rounded-2xl text-xs shadow-apple active:scale-95 transition"
-                  >
-                    أنهيت وردي وتثبيتي اليوم ✓
-                  </button>
-                </div>
-              </div>
-            )}
-
-          </main>
-
-          {/* نافذة إضافة طالب جديد (Modal) بدون الحاجة لكتابة كود */}
+          {/* نافذة إضافة طالب فوري للمشرف */}
           {isAddModalOpen && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl">
                 <div className="flex justify-between items-center border-b border-borderCustom pb-2">
-                  <h3 className="font-black text-sm text-emerald-deep">إضافة طالب جديد للحلقة</h3>
+                  <h3 className="font-black text-sm text-emerald-deep">إضافة طالب فوري للحلقة</h3>
                   <button onClick={() => setIsAddModalOpen(false)} className="text-dark-muted text-sm font-bold">✕</button>
                 </div>
 
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const form = e.target;
-                  handleAddStudent({
+                  const newStd = {
                     id: "std-" + Date.now(),
                     name: form.stdName.value,
                     surah: form.stdSurah.value || "سورة البقرة",
@@ -362,7 +659,10 @@
                     lastExamScore: 100,
                     parent: form.stdParent.value || "ولي أمر",
                     streak: 1
-                  });
+                  };
+                  setStudents(prev => [newStd, ...prev]);
+                  setIsAddModalOpen(false);
+                  showToast(`تمت إضافة الطالب (${newStd.name}) فوراً!`);
                 }} className="space-y-3">
                   <div>
                     <label className="text-[11px] font-bold text-dark-text block mb-1">اسم الطالب كاملاً:</label>
@@ -385,7 +685,7 @@
                     </select>
                   </div>
                   <button type="submit" className="w-full bg-emerald-deep text-white font-bold py-3 rounded-xl text-xs shadow active:scale-95">
-                    حفظ الطالب الآن في السحاب
+                    حفظ الطالب الآن
                   </button>
                 </form>
               </div>
@@ -396,7 +696,7 @@
       );
     }
 
-    // مكون الممتحن المعتمد
+    // شاشة الممتحن المعتمد
     function ExaminerView({ students, setStudents, showToast }) {
       const [selectedId, setSelectedId] = useState(students[0]?.id || "std-1");
       const [errors, setErrors] = useState({});
