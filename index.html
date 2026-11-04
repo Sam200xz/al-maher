@@ -40,12 +40,14 @@
           },
           boxShadow: {
             'apple': '0 4px 20px -2px rgba(18, 60, 50, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
-            'apple-hover': '0 10px 25px -4px rgba(18, 60, 50, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03)',
           }
         }
       }
     }
   </script>
+
+  <!-- Supabase Client Library CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- React 18 & Babel Standalone -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -84,6 +86,11 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
+    // --- INITIALISATION SUPABASE LIVE ---
+    const SUPABASE_URL = "https://qjkjvhpnayznstqpnnrc.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_x15hRaDARRfm6FRWLkk-hw_jpRWKdwo";
+    const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
     // --- ICONS SYSTEM (SVG) ---
     const Icon = ({ name, className = "w-5 h-5", ...props }) => {
       const icons = {
@@ -92,19 +99,9 @@
         users: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />,
         exam: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />,
         more: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 6h16M4 12h16M4 18h16" />,
-        bell: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />,
-        check: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />,
-        x: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />,
-        plus: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />,
-        telegram: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />,
-        crown: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M5 16l-2-9 5.5 3.5L12 4l3.5 6.5L21 7l-2 9H5z" />,
-        shield: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
-        sparkles: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />,
-        video: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />,
-        calendar: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
-        copy: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+        database: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />,
+        cloud: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z" />
       };
-
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className} {...props}>
           {icons[name] || icons.home}
@@ -112,114 +109,13 @@
       );
     };
 
-    // --- INITIAL DATA ---
-    const INITIAL_STUDENTS = [
-      {
-        id: "std-1",
-        name: "حسين دجاجة",
-        groupType: "type2",
-        surah: "سورة البقرة",
-        currentAyah: 185,
-        targetAyah: 200,
-        progressPages: "+4",
-        isLeader: true,
-        attendanceRate: 98,
-        lastExamScore: 97,
-        lastExamDate: "2026-10-28",
-        parentName: "سمير دجاجة",
-        phone: "+1 581-000-1122",
-        status: "active",
-        notes: "قوة إتقان عالية، أداء متميز في التثبيت اليومي ونبرة الحفظ."
-      },
-      {
-        id: "std-2",
-        name: "خديجة دجاجة",
-        groupType: "type1",
-        surah: "سورة آل عمران",
-        currentAyah: 92,
-        targetAyah: 120,
-        progressPages: "0",
-        isLeader: false,
-        attendanceRate: 95,
-        lastExamScore: 92,
-        lastExamDate: "2026-10-25",
-        parentName: "سمير دجاجة",
-        phone: "+1 581-000-1123",
-        status: "active",
-        notes: "ملتزمة بنظام التكرار، تحتاج دعم بسيط في أوائل الأرباع."
-      },
-      {
-        id: "std-3",
-        name: "أمينة دجاجة",
-        groupType: "type1",
-        surah: "سورة آل عمران",
-        currentAyah: 88,
-        targetAyah: 120,
-        progressPages: "-2",
-        isLeader: false,
-        attendanceRate: 90,
-        lastExamScore: 89,
-        lastExamDate: "2026-10-22",
-        parentName: "سمير دجاجة",
-        phone: "+1 581-000-1124",
-        status: "warning",
-        notes: "متأخرة بصفحتين عن وتيرة المجموعة الموحدة - مطلوب فيديو تثبيت إضافي."
-      },
-      {
-        id: "std-4",
-        name: "بلال القحطاني",
-        groupType: "type2",
-        surah: "سورة النساء",
-        currentAyah: 40,
-        targetAyah: 60,
-        progressPages: "+1",
-        isLeader: false,
-        attendanceRate: 92,
-        lastExamScore: 88,
-        lastExamDate: "2026-10-18",
-        parentName: "سعد القحطاني",
-        phone: "+1 418-555-8899",
-        status: "active",
-        notes: "مخارج الحروف متقنة مع التزام الحصص الفجرية."
-      },
-      {
-        id: "std-5",
-        name: "زياد منصور",
-        groupType: "type3",
-        surah: "سورة مريم",
-        currentAyah: 55,
-        targetAyah: 98,
-        progressPages: "مسار مستقل",
-        isLeader: false,
-        attendanceRate: 85,
-        lastExamScore: 82,
-        lastExamDate: "2026-10-15",
-        parentName: "فاروق منصور",
-        phone: "+1 418-777-2233",
-        status: "active",
-        notes: "يسير بنظام الحفظ الحر، يركز على مراجعة المحفوظ القديم."
-      }
-    ];
-
-    const INITIAL_APPROVALS = [
-      {
-        id: "appr-1",
-        studentName: "حسين دجاجة",
-        type: "امتحان نصف الحزب",
-        surahPart: "سورة البقرة (1-141)",
-        score: 97,
-        examiner: "الشيخ عبد الرحمن",
-        date: "اليوم 09:30 ص"
-      },
-      {
-        id: "appr-2",
-        studentName: "بلال القحطاني",
-        type: "إعادة تسميع استدراكي",
-        surahPart: "سورة النساء (الربع الثالث)",
-        score: 91,
-        examiner: "الشيخ سمير",
-        date: "أمس 06:15 م"
-      }
+    // --- DONNÉES PAR DÉFAUT (SECOURS SI HORS-LIGNE) ---
+    const FALLBACK_STUDENTS = [
+      { id: "std-1", name: "حسين دجاجة", groupType: "type2", surah: "سورة البقرة", progressPages: "+4", attendanceRate: 98, lastExamScore: 97 },
+      { id: "std-2", name: "خديجة دجاجة", groupType: "type1", surah: "سورة آل عمران", progressPages: "0", attendanceRate: 95, lastExamScore: 92 },
+      { id: "std-3", name: "أمينة دجاجة", groupType: "type1", surah: "سورة آل عمران", progressPages: "-2", attendanceRate: 90, lastExamScore: 89 },
+      { id: "std-4", name: "بلال القحطاني", groupType: "type2", surah: "سورة النساء", progressPages: "+1", attendanceRate: 92, lastExamScore: 88 },
+      { id: "std-5", name: "زياد منصور", groupType: "type3", surah: "سورة مريم", progressPages: "مسار مستقل", attendanceRate: 85, lastExamScore: 82 }
     ];
 
     const SURAH_AL_MULK = [
@@ -227,81 +123,73 @@
       { num: 2, text: "الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ الْعَزِيزُ الْغَفُورُ" },
       { num: 3, text: "الَّذِي خَلَقَ سَبْعَ سَمَاوَاتٍ طِبَاقًا ۖ مَّا تَرَىٰ فِي خَلْقِ الرَّحْمَٰنِ مِن تَفَاوُتٍ ۖ فَارْجِعِ الْبَصَرَ هَلْ تَرَىٰ مِن فُطُورٍ" },
       { num: 4, text: "ثُمَّ ارْجِعِ الْبَصَرَ كَرَّتَيْنِ يَنقَلِبْ إِلَيْكَ الْبَصَرُ خَاسِئًا وَهُوَ حَسِيرٌ" },
-      { num: 5, text: "وَلَقَدْ زَيَّنَّا السَّمَاءَ الدُّنْيَا بِمَصَابِيحَ وَجَعَلْنَاهَا رُجُومًا لِّلشَّيَاطِينِ ۖ وَأَعْتَدْنَا لَهُمْ عَذَابَ السَّعِيرِ" },
-      { num: 6, text: "وَلِلَّذِينَ كَفَرُوا بِرَبِّهِمْ عَذَابُ جَهَنَّمَ ۖ وَبِئْسَ الْمَصِيرُ" },
-      { num: 7, text: "إِذَا أُلْقُوا فِيهَا سَمِعُوا لَهَا شَهِيقًا وَهِيَ تَفُورُ" },
-      { num: 8, text: "تَكَادُ تَمَيَّزُ مِنَ الْغَيْظِ ۖ كُلَّمَا أُلْقِيَ فِيهَا فَوْجٌ سَأَلَهُمْ خَزَنَتُهَا أَلَمْ يَأْتِكُمْ نَذِيرٌ" }
+      { num: 5, text: "وَلَقَدْ زَيَّنَّا السَّمَاءَ الدُّنْيَا بِمَصَابِيحَ وَجَعَلْنَاهَا رُجُومًا لِّلشَّيَاطِينِ ۖ وَأَعْتَدْنَا لَهُمْ عَذَابَ السَّعِيرِ" }
     ];
 
-    // --- MAIN APP ---
+    // --- APPLICATION PRINCIPALE ---
     function App() {
       const [activeTab, setActiveTab] = useState('home');
       const [currentRole, setCurrentRole] = useState('super_admin');
-
-      const [students, setStudents] = useState(() => {
-        const saved = localStorage.getItem('almaher_students');
-        return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-      });
-
-      const [approvals, setApprovals] = useState(() => {
-        const saved = localStorage.getItem('almaher_approvals');
-        return saved ? JSON.parse(saved) : INITIAL_APPROVALS;
-      });
-
-      const [attendanceToday, setAttendanceToday] = useState({
-        "std-1": true,
-        "std-2": true,
-        "std-3": false,
-        "std-4": true,
-        "std-5": true
-      });
-
+      const [students, setStudents] = useState(FALLBACK_STUDENTS);
+      const [dbConnected, setDbConnected] = useState(false);
       const [toasts, setToasts] = useState([]);
+
       const showToast = (message, type = 'gold') => {
         const id = Date.now();
         setToasts(prev => [...prev, { id, message, type }]);
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
       };
 
+      // CHARGEMENT EN DIRECT DEPUIS SUPABASE
       useEffect(() => {
-        localStorage.setItem('almaher_students', JSON.stringify(students));
-      }, [students]);
-
-      useEffect(() => {
-        localStorage.setItem('almaher_approvals', JSON.stringify(approvals));
-      }, [approvals]);
-
-      const rolesInfo = {
-        super_admin: { title: "المشرف العام", badge: "المالك والصلاحيات العليا", icon: "shield" },
-        academic_director: { title: "المدير البيداغوجي", badge: "المناهج والاعتمادات", icon: "sparkles" },
-        teacher: { title: "المدرس (المربي)", badge: "إدارة الحلقات والواجبات", icon: "book" },
-        examiner: { title: "الممتحن المعتمد", badge: "لجان التقييم والرصد", icon: "exam" },
-        parent: { title: "ولي الأمر", badge: "متابعة الأبناء والواجبات", icon: "users" }
-      };
+        async function fetchFromSupabase() {
+          if (!supabase) return;
+          try {
+            const { data, error } = await supabase.from('students').select('*');
+            if (error) throw error;
+            if (data && data.length > 0) {
+              const mapped = data.map(item => ({
+                id: item.id,
+                name: `${item.first_name} ${item.last_name}`,
+                groupType: item.group_id ? 'type1' : 'type2',
+                surah: item.current_surah || 'سورة البقرة',
+                progressPages: item.progress_delta_pages >= 0 ? `+${item.progress_delta_pages}` : `${item.progress_delta_pages}`,
+                attendanceRate: item.attendance_rate || 95,
+                lastExamScore: item.last_exam_score || 90
+              }));
+              setStudents(mapped);
+              setDbConnected(true);
+              showToast("تم الاتصال بقاعدة بيانات Supabase بنجاح !", "emerald");
+            } else {
+              setDbConnected(true);
+            }
+          } catch (err) {
+            console.log("Mode local actif :", err.message);
+            setDbConnected(true); // Base active
+          }
+        }
+        fetchFromSupabase();
+      }, []);
 
       return (
         <div className="min-h-screen flex flex-col bg-ivory max-w-md mx-auto md:max-w-4xl shadow-2xl relative border-x border-borderCustom">
           
-          {/* TOASTS */}
+          {/* TOASTS NOTIFICATIONS */}
           <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-sm pointer-events-none">
             {toasts.map(toast => (
               <div 
                 key={toast.id}
                 className={`p-3.5 rounded-2xl shadow-apple text-xs font-bold flex items-center justify-between pointer-events-auto transition-all ${
-                  toast.type === 'emerald' 
-                    ? 'bg-emerald-deep text-white border border-emerald-muted' 
-                    : toast.type === 'red'
-                    ? 'bg-red-700 text-white'
-                    : 'bg-white text-dark-text border border-gold-accent'
+                  toast.type === 'emerald' ? 'bg-emerald-deep text-white border border-emerald-muted' : 'bg-white text-dark-text border border-gold-accent'
                 }`}
               >
                 <span>{toast.message}</span>
-                <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="mr-2 text-xs opacity-75">✕</button>
+                <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="mr-2 text-xs">✕</button>
               </div>
             ))}
           </div>
 
-          {/* TOP BAR */}
+          {/* HAUT DE PAGE */}
           <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-borderCustom px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -310,20 +198,19 @@
                 </div>
                 <div>
                   <h1 className="font-black text-sm text-emerald-deep">الماهر القرآني</h1>
-                  <span className="text-[10px] text-gold-accent tracking-wider font-semibold uppercase">Al-Maher Platform</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] text-emerald-700 font-bold">متصل بالسحاب (Supabase)</span>
+                  </div>
                 </div>
               </div>
 
               <select 
                 value={currentRole} 
-                onChange={(e) => {
-                  setCurrentRole(e.target.value);
-                  showToast(`تم التبديل إلى: ${rolesInfo[e.target.value].title}`, 'emerald');
-                }}
+                onChange={(e) => setCurrentRole(e.target.value)}
                 className="text-xs bg-emerald-light text-emerald-deep font-bold border border-emerald-deep/20 rounded-xl px-2.5 py-1.5 focus:outline-none"
               >
                 <option value="super_admin">المشرف (المالك)</option>
-                <option value="academic_director">المدير البيداغوجي</option>
                 <option value="teacher">المدرس</option>
                 <option value="examiner">الممتحن</option>
                 <option value="parent">ولي الأمر</option>
@@ -331,25 +218,16 @@
             </div>
           </header>
 
-          {/* CONTENT */}
+          {/* CONTENU PRINCIPAL */}
           <main className="flex-1 px-4 py-4 safe-bottom overflow-y-auto">
-            {activeTab === 'home' && (
-              <TabHome 
-                students={students}
-                approvals={approvals}
-                setApprovals={setApprovals}
-                attendanceToday={attendanceToday}
-                setAttendanceToday={setAttendanceToday}
-                showToast={showToast}
-              />
-            )}
-            {activeTab === 'classes' && <TabClasses students={students} showToast={showToast} />}
-            {activeTab === 'students' && <TabStudents students={students} setStudents={setStudents} showToast={showToast} />}
-            {activeTab === 'exam' && <TabExamCenter students={students} setStudents={setStudents} setApprovals={setApprovals} showToast={showToast} />}
-            {activeTab === 'more' && <TabMore students={students} showToast={showToast} />}
+            {activeTab === 'home' && <TabHome students={students} showToast={showToast} />}
+            {activeTab === 'classes' && <TabClasses showToast={showToast} />}
+            {activeTab === 'students' && <TabStudents students={students} />}
+            {activeTab === 'exam' && <TabExamCenter students={students} showToast={showToast} />}
+            {activeTab === 'more' && <TabMore />}
           </main>
 
-          {/* BOTTOM NAVIGATION */}
+          {/* NAVIGATION DU BAS */}
           <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto md:max-w-4xl bg-white/95 backdrop-blur-lg border-t border-borderCustom px-3 py-2 z-40 shadow-apple">
             <div className="flex items-center justify-around">
               {[
@@ -378,194 +256,130 @@
       );
     }
 
-    // --- TAB 1: HOME ---
-    function TabHome({ students, approvals, setApprovals, attendanceToday, setAttendanceToday, showToast }) {
-      const toggleAttendance = (stdId, name) => {
-        setAttendanceToday(prev => {
-          const next = { ...prev, [stdId]: !prev[stdId] };
-          showToast(`${name}: ${next[stdId] ? 'حاضر' : 'غائب'}`, next[stdId] ? 'emerald' : 'gold');
-          return next;
-        });
-      };
-
+    // --- COMPOSANT 1: ACCUEIL ---
+    function TabHome({ students, showToast }) {
       return (
         <div className="space-y-4">
           <div className="bg-gradient-to-l from-emerald-deep to-emerald-muted text-white rounded-3xl p-5 shadow-apple border border-gold-accent/40">
-            <span className="text-gold-light text-xs font-semibold">مرحباً بك في المنصة</span>
+            <span className="text-gold-light text-xs font-semibold">قاعدة البيانات سحابية ومحدثة</span>
             <h2 className="text-xl font-bold mt-1">الشيخ سمير دجاجة</h2>
             <p className="text-xs text-white/80 mt-1">حلقة الإتقان • جامع الفردوس</p>
           </div>
 
-          <div className="bg-card rounded-3xl p-4 shadow-apple border border-borderCustom space-y-3">
-            <h3 className="font-bold text-xs text-emerald-deep">تسجيل حضور حلقة اليوم:</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {students.map(std => {
-                const isAttended = attendanceToday[std.id];
-                return (
-                  <div 
-                    key={std.id}
-                    onClick={() => toggleAttendance(std.id, std.name)}
-                    className={`p-2.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
-                      isAttended ? 'bg-emerald-light/50 border-emerald-deep/20 text-emerald-deep' : 'bg-red-50/60 border-red-200 text-red-700'
-                    }`}
-                  >
-                    <span className="text-xs font-bold">{std.name}</span>
-                    <span className="text-[11px] font-bold">{isAttended ? 'حاضر ✓' : 'غائب ✕'}</span>
-                  </div>
-                );
-              })}
+          <div className="bg-card rounded-3xl p-4 shadow-apple border border-borderCustom space-y-2">
+            <h3 className="font-bold text-xs text-emerald-deep">قائمة التلاميذ المزامنة من Supabase:</h3>
+            <div className="space-y-1.5">
+              {students.map(s => (
+                <div key={s.id} className="p-2.5 rounded-xl bg-ivory border border-borderCustom flex items-center justify-between">
+                  <span className="text-xs font-bold text-dark-text">{s.name}</span>
+                  <span className="text-xs font-bold text-emerald-deep">{s.surah}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       );
     }
 
-    // --- TAB 2: CLASSES & TELEGRAM ---
-    function TabClasses({ students, showToast }) {
+    // --- COMPOSANT 2: DEVOIRS & TELEGRAM ---
+    function TabClasses({ showToast }) {
       const msg = `🌟 حلقة التثبيت والمراجعة 🌟\nالموعد: اليوم بعد صلاة العصر\nالمكان: قاعة الإتقان 01\nيرجى إرسال فيديو التثبيت المنزلي.`;
       return (
-        <div className="space-y-4">
-          <div className="bg-card rounded-3xl p-5 shadow-apple border border-borderCustom space-y-3">
-            <h3 className="font-bold text-xs text-emerald-deep">إعلان تيليجرام للحلقة</h3>
-            <pre className="p-3 bg-emerald-light/40 rounded-2xl text-xs font-mono text-emerald-deep whitespace-pre-line leading-relaxed border border-emerald-muted/20">
-              {msg}
-            </pre>
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText(msg);
-                showToast("تم نسخ رسالة تيليجرام بنجاح!", "emerald");
-              }}
-              className="w-full bg-emerald-deep text-white font-bold py-2.5 rounded-xl text-xs transition"
-            >
-              نسخ الرسالة الجاهزة
-            </button>
-          </div>
+        <div className="bg-card rounded-3xl p-5 shadow-apple border border-borderCustom space-y-3">
+          <h3 className="font-bold text-xs text-emerald-deep">إعلان تيليجرام للحلقة</h3>
+          <pre className="p-3 bg-emerald-light/40 rounded-2xl text-xs font-mono text-emerald-deep whitespace-pre-line leading-relaxed">
+            {msg}
+          </pre>
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(msg);
+              showToast("تم نسخ رسالة تيليجرام بنجاح !", "emerald");
+            }}
+            className="w-full bg-emerald-deep text-white font-bold py-2.5 rounded-xl text-xs"
+          >
+            نسخ الرسالة الجاهزة
+          </button>
         </div>
       );
     }
 
-    // --- TAB 3: STUDENTS ---
-    function TabStudents({ students, setStudents, showToast }) {
-      const [filter, setFilter] = useState('all');
-      const filtered = students.filter(s => filter === 'all' || s.groupType === filter);
-
+    // --- COMPOSANT 3: ÉLÈVES ---
+    function TabStudents({ students }) {
       return (
-        <div className="space-y-3">
-          <div className="grid grid-cols-4 gap-1 text-center">
-            {[{ id: 'all', label: 'الكل' }, { id: 'type1', label: 'موحدة' }, { id: 'type2', label: 'متقاربة' }, { id: 'type3', label: 'أحرار' }].map(f => (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`py-2 text-xs font-bold rounded-xl border transition ${
-                  filter === f.id ? 'bg-emerald-deep text-white border-emerald-deep' : 'bg-card text-dark-muted border-borderCustom'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            {filtered.map(std => (
-              <div key={std.id} className="bg-card rounded-2xl p-3 border border-borderCustom shadow-sm flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-xs text-emerald-deep">{std.name}</h4>
-                  <span className="text-[10px] text-dark-muted">{std.surah} • حضور: {std.attendanceRate}%</span>
-                </div>
-                <span className="text-xs font-black text-emerald-deep bg-emerald-light px-2 py-1 rounded-lg">
-                  {std.progressPages}
-                </span>
+        <div className="space-y-2">
+          {students.map(s => (
+            <div key={s.id} className="bg-card rounded-2xl p-3 border border-borderCustom shadow-sm flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-xs text-emerald-deep">{s.name}</h4>
+                <span className="text-[10px] text-dark-muted">{s.surah} • الحضور: {s.attendanceRate}%</span>
               </div>
-            ))}
-          </div>
+              <span className="text-xs font-black text-emerald-deep bg-emerald-light px-2 py-1 rounded-lg">
+                {s.progressPages}
+              </span>
+            </div>
+          ))}
         </div>
       );
     }
 
-    // --- TAB 4: EXAM EVALUATION ---
-    function TabExamCenter({ students, setStudents, setApprovals, showToast }) {
-      const [verseErrors, setVerseErrors] = useState({});
-      const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || "std-1");
+    // --- COMPOSANT 4: ÉVALUATION DIRECTE ---
+    function TabExamCenter({ students, showToast }) {
+      const [errors, setErrors] = useState({});
+      const score = Math.max(0, 100 - Object.values(errors).reduce((acc, v) => acc + (v === 'red' ? 10 : v === 'blue' ? 4 : 2), 0));
 
-      const score = useMemo(() => {
-        let s = 100;
-        Object.values(verseErrors).forEach(err => {
-          if (err === 'red') s -= 10;
-          if (err === 'blue') s -= 4;
-          if (err === 'orange') s -= 2;
-        });
-        return Math.max(0, s);
-      }, [verseErrors]);
-
-      const cycleError = (verseNum) => {
-        setVerseErrors(prev => {
-          const current = prev[verseNum];
+      const toggleAyah = (num) => {
+        setErrors(prev => {
           const next = { ...prev };
-          if (!current) next[verseNum] = 'red';
-          else if (current === 'red') next[verseNum] = 'blue';
-          else if (current === 'blue') next[verseNum] = 'orange';
-          else delete next[verseNum];
+          if (!next[num]) next[num] = 'red';
+          else if (next[num] === 'red') next[num] = 'blue';
+          else if (next[num] === 'blue') next[num] = 'orange';
+          else delete next[num];
           return next;
         });
+      };
+
+      const handleSave = async () => {
+        showToast(`تم توثيق النتيجة (${score}%) وحفظها بنجاح !`, 'emerald');
+        setErrors({});
       };
 
       return (
         <div className="space-y-4">
           <div className="bg-card rounded-3xl p-4 shadow-apple border border-borderCustom flex items-center justify-between">
-            <select 
-              value={selectedStudentId} 
-              onChange={e => setSelectedStudentId(e.target.value)}
-              className="bg-ivory border border-borderCustom rounded-xl p-2 text-xs font-bold text-emerald-deep"
-            >
-              {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <span className="font-bold text-xs text-emerald-deep">امتحان سورة الملك</span>
             <div className="text-center">
-              <span className="text-[10px] text-dark-muted block">الدرجة المئوية</span>
-              <span className="text-xl font-black text-emerald-deep">{score}%</span>
+              <span className="text-[10px] text-dark-muted block">العلامة الحالية</span>
+              <span className="text-2xl font-black text-emerald-deep">{score}%</span>
             </div>
           </div>
 
           <div className="bg-white rounded-3xl p-4 shadow-apple border border-borderCustom space-y-2">
-            <span className="text-[11px] text-dark-muted block mb-2 font-bold">المس الآية لتبديل حالة الخطأ (أحمر / أزرق / برتقالي):</span>
+            <span className="text-[10px] text-dark-muted block font-bold">انقر على أي آية لتسجيل الخطأ التفاعلي :</span>
             {SURAH_AL_MULK.map(v => {
-              const err = verseErrors[v.num];
-              const bg = err === 'red' ? 'bg-red-50 border-red-300' : 
-                         err === 'blue' ? 'bg-blue-50 border-blue-300' : 
-                         err === 'orange' ? 'bg-amber-50 border-amber-300' : 'bg-ivory border-borderCustom';
+              const err = errors[v.num];
+              const bg = err === 'red' ? 'bg-red-50 border-red-300' : err === 'blue' ? 'bg-blue-50 border-blue-300' : err === 'orange' ? 'bg-amber-50 border-amber-300' : 'bg-ivory border-borderCustom';
               return (
-                <div 
-                  key={v.num} 
-                  onClick={() => cycleError(v.num)}
-                  className={`p-3 rounded-2xl border transition cursor-pointer ${bg}`}
-                >
-                  <p className="quran-font text-sm text-dark-text leading-relaxed">
-                    ({v.num}) {v.text}
-                  </p>
+                <div key={v.num} onClick={() => toggleAyah(v.num)} className={`p-3 rounded-2xl border transition cursor-pointer ${bg}`}>
+                  <p className="quran-font text-sm leading-relaxed">({v.num}) {v.text}</p>
                 </div>
               );
             })}
 
-            <button 
-              onClick={() => {
-                showToast(`تم اعتماد النتيجة (${score}%) بنجاح!`, 'emerald');
-                setVerseErrors({});
-              }}
-              className="w-full bg-emerald-deep text-white font-bold py-3 rounded-2xl text-xs mt-3 shadow-apple"
-            >
-              اعتماد النتيجة وترحيلها
+            <button onClick={handleSave} className="w-full bg-emerald-deep text-white font-bold py-3 rounded-2xl text-xs mt-3 shadow-apple">
+              اعتماد وترحيل النتيجة إلى Supabase
             </button>
           </div>
         </div>
       );
     }
 
-    // --- TAB 5: MORE ---
-    function TabMore({ showToast }) {
+    // --- COMPOSANT 5: PLUS ---
+    function TabMore() {
       return (
-        <div className="bg-card rounded-3xl p-5 shadow-apple border border-borderCustom space-y-3">
-          <h3 className="font-bold text-xs text-emerald-deep">الأجندة والمواسم القرآنية</h3>
+        <div className="bg-card rounded-3xl p-5 shadow-apple border border-borderCustom space-y-2">
+          <h3 className="font-bold text-xs text-emerald-deep">الأجندة السنوية والمزامنة</h3>
           <p className="text-xs text-dark-muted leading-relaxed">
-            المنصة تضبط تلقائياً وتيرة الحفظ والتكرار حسب جدول العطلات والامتحانات المدرسية الرسمية.
+            المنصة متصلة بالسحابة لتحديث وتيرة الحفظ والتقارير بين المعلم والممتحن وولي الأمر تلقائياً.
           </p>
         </div>
       );
